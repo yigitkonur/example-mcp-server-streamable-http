@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm test` - Run Jest test suite
 - `npm run test:watch` - Run tests in watch mode
 - `npm run test:e2e` - Run end-to-end tests with real HTTP requests
-- `npm run test:inspector` - Test with MCP Inspector CLI
+- `npx @modelcontextprotocol/inspector http://localhost:1453/mcp` - Test with MCP Inspector CLI (direct command)
 - `npm run test:health` - Quick health check via curl
 
 **Code Quality**:
