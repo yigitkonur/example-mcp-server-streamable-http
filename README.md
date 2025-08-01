@@ -123,7 +123,7 @@ npm start
 npm run dev
 
 # Test with MCP Inspector CLI
-npm run inspector
+npm run test:inspector
 ```
 
 The server will start on `http://localhost:1453`
