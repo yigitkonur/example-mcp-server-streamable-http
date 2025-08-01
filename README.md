@@ -5,6 +5,7 @@
 [![MCP Version](https://img.shields.io/badge/MCP-1.0.0-blue)](https://modelcontextprotocol.io)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
 [![Architecture](https://img.shields.io/badge/Architecture-Stateful-green)](https://spec.modelcontextprotocol.io/specification/basic/transports/#streamable-http)
+[![smithery badge](https://smithery.ai/badge/@yigitkonur/example-mcp-server-streamable-http)](https://smithery.ai/server/@yigitkonur/example-mcp-server-streamable-http)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 </div>
@@ -64,7 +65,7 @@ sequenceDiagram
 
 ## ✨ Feature Compliance
 
-This server implements the complete MCP Latest Standard feature set, enhanced with stateful capabilities that leverage session context.
+This server implements the complete MCP Golden Standard feature set, enhanced with stateful capabilities that leverage session context.
 
 | Name | Status | Implementation |
 |:------|:--------|:----------------|
@@ -93,6 +94,15 @@ This server implements the complete MCP Latest Standard feature set, enhanced wi
 
 ### Installation
 
+#### Installing via Smithery
+
+To install example-mcp-server-streamable-http for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@yigitkonur/example-mcp-server-streamable-http):
+
+```bash
+npx -y @smithery/cli install @yigitkonur/example-mcp-server-streamable-http --client claude
+```
+
+#### Installing Manually
 ```bash
 # Clone the repository
 git clone https://github.com/modelcontextprotocol/mcp-server-examples.git
@@ -239,8 +249,18 @@ npm run test:e2e
 npm run test:watch
 ```
 
-## 📚 Official Resources
+## 📚 Project Resources
 
 *   [MCP Specification](https://spec.modelcontextprotocol.io)
 *   [Model Context Protocol Documentation](https://modelcontextprotocol.io)
 *   [Streamable HTTP Transport Documentation](https://spec.modelcontextprotocol.io/specification/basic/transports/#streamable-http)
+
+## 📝 License
+
+This project is licensed under the MIT License.
+
+---
+
+<p align="center">
+  ✅ <strong>Stateful Reference Implementation - MCP Learning Edition</strong>
+</p>
