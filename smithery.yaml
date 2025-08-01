@@ -1,0 +1,46 @@
+name: calculator-learning-demo-streamable-http
+description: |
+  Streamable HTTP (stateful) reference implementation for MCP learning edition.
+  A comprehensive calculator server with session management, event sourcing, and resumability.
+  Features 7 tools, 5 resources, and 5 prompts for mathematical calculations and learning.
+
+configSchema:
+  type: object
+  properties:
+    SESSION_TIMEOUT:
+      type: string
+      title: Session Timeout
+      description: Session timeout in minutes (default: 30)
+      default: "30"
+    RATE_LIMIT_MAX:
+      type: string
+      title: Rate Limit Max
+      description: Maximum requests per window (default: 1000)
+      default: "1000"
+    RATE_LIMIT_WINDOW:
+      type: string
+      title: Rate Limit Window
+      description: Rate limit window in minutes (default: 15)
+      default: "15"
+    CORS_ORIGIN:
+      type: string
+      title: CORS Origin
+      description: CORS allowed origin (default: *)
+      default: "*"
+
+startCommand:
+  type: http
+  healthPath: /health
+  commandFunction: |
+    (cfg) => ({
+      command: 'node',
+      args: ['dist/production-server.js'],
+      env: {
+        PORT: 8080,
+        SESSION_TIMEOUT: cfg.SESSION_TIMEOUT || '30',
+        RATE_LIMIT_MAX: cfg.RATE_LIMIT_MAX || '1000',
+        RATE_LIMIT_WINDOW: cfg.RATE_LIMIT_WINDOW || '15',
+        CORS_ORIGIN: cfg.CORS_ORIGIN || '*',
+        NODE_ENV: 'production'
+      }
+    })

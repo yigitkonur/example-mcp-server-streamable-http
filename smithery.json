@@ -1,0 +1,109 @@
+{
+  "name": "calculator-learning-demo-streamable-http",
+  "version": "1.0.0",
+  "description": "Streamable HTTP (stateful) reference implementation for MCP learning edition. A comprehensive calculator server with session management, event sourcing, and resumability.",
+  "author": "MCP Examples Team",
+  "license": "MIT",
+  "homepage": "https://github.com/modelcontextprotocol/mcp-server-examples/tree/main/streamable-http",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/modelcontextprotocol/mcp-server-examples.git",
+    "directory": "streamable-http"
+  },
+  "keywords": [
+    "mcp",
+    "calculator",
+    "streamable-http",
+    "stateful",
+    "session-management",
+    "event-sourcing",
+    "resumability",
+    "mathematics",
+    "learning",
+    "typescript"
+  ],
+  "categories": [
+    "education",
+    "mathematics",
+    "development-tools"
+  ],
+  "transport": "streamable-http",
+  "features": {
+    "tools": [
+      {
+        "name": "calculate",
+        "description": "Perform basic arithmetic calculations with result persistence"
+      },
+      {
+        "name": "batch_calculate",
+        "description": "Execute multiple calculations in a single request"
+      },
+      {
+        "name": "advanced_calculate",
+        "description": "Advanced mathematical operations including trigonometry and logarithms"
+      },
+      {
+        "name": "demo_progress",
+        "description": "Demonstrate progress tracking with streaming updates"
+      }
+    ],
+    "resources": [
+      {
+        "name": "calculator://constants",
+        "description": "Mathematical constants (π, e, φ, etc.)"
+      },
+      {
+        "name": "calculator://history/{calculationId}",
+        "description": "Access calculation history by ID"
+      },
+      {
+        "name": "calculator://stats",
+        "description": "Server and calculation statistics"
+      },
+      {
+        "name": "session://info/{sessionId}",
+        "description": "Session information and metadata"
+      },
+      {
+        "name": "formulas://library",
+        "description": "Mathematical formulas library"
+      }
+    ],
+    "prompts": [
+      {
+        "name": "explain-calculation",
+        "description": "Generate detailed explanations for mathematical calculations"
+      },
+      {
+        "name": "generate-problems",
+        "description": "Create practice problems for mathematical concepts"
+      },
+      {
+        "name": "solve_math_problem",
+        "description": "Solve mathematical problems step by step"
+      },
+      {
+        "name": "explain_formula",
+        "description": "Explain mathematical formulas and their applications"
+      },
+      {
+        "name": "calculator_assistant",
+        "description": "Interactive calculator assistant for learning"
+      }
+    ]
+  },
+  "capabilities": [
+    "Session Management",
+    "Event Sourcing",
+    "Resumability",
+    "Rate Limiting",
+    "Health Monitoring",
+    "Metrics Collection",
+    "CORS Support",
+    "Ring Buffer History",
+    "Streaming Updates"
+  ],
+  "requirements": {
+    "node": ">=20.0.0"
+  }
+}
