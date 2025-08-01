@@ -123,7 +123,7 @@ npm start
 npm run dev
 
 # Test with MCP Inspector CLI
-npm run test:inspector
+npx @modelcontextprotocol/inspector http://localhost:1453/mcp
 ```
 
 The server will start on `http://localhost:1453`
