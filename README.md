@@ -64,7 +64,7 @@ sequenceDiagram
 
 ## ✨ Feature Compliance
 
-This server implements the complete MCP Golden Standard feature set, enhanced with stateful capabilities that leverage session context.
+This server implements the complete MCP Latest Standard feature set, enhanced with stateful capabilities that leverage session context.
 
 | Name | Status | Implementation |
 |:------|:--------|:----------------|
@@ -239,18 +239,8 @@ npm run test:e2e
 npm run test:watch
 ```
 
-## 📚 Project Resources
+## 📚 Official Resources
 
 *   [MCP Specification](https://spec.modelcontextprotocol.io)
 *   [Model Context Protocol Documentation](https://modelcontextprotocol.io)
 *   [Streamable HTTP Transport Documentation](https://spec.modelcontextprotocol.io/specification/basic/transports/#streamable-http)
-
-## 📝 License
-
-This project is licensed under the MIT License.
-
----
-
-<p align="center">
-  ✅ <strong>Stateful Reference Implementation - MCP Learning Edition</strong>
-</p>
