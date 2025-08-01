@@ -168,6 +168,30 @@ function createMCPServer(sessionId: string): McpServer {
   }
 
   // ==========================================
+  // SAMPLE TOOL (EDUCATIONAL)
+  // ==========================================
+  
+  // Optional sample tool for educational purposes
+  const sampleToolName = process.env['SAMPLE_TOOL_NAME']?.trim();
+  if (sampleToolName) {
+    server.tool(
+      sampleToolName,
+      'Sample educational tool for learning MCP concepts',
+      {
+        message: z.string().describe('Message to echo back')
+      },
+      async ({ message }): Promise<CallToolResult> => {
+        return {
+          content: [{
+            type: 'text',
+            text: `Sample tool "${sampleToolName}" received: ${message}`
+          }]
+        };
+      }
+    );
+  }
+
+  // ==========================================
   // CORE TOOLS
   // ==========================================
 

@@ -27,6 +27,11 @@ configSchema:
       title: CORS Origin
       description: CORS allowed origin (default: *)
       default: "*"
+    SAMPLE_TOOL_NAME:
+      type: string
+      title: Sample Tool Name
+      description: Optional sample tool name for educational purposes (leave empty to disable)
+      default: ""
 
 startCommand:
   type: http
@@ -41,6 +46,7 @@ startCommand:
         RATE_LIMIT_MAX: cfg.RATE_LIMIT_MAX || '1000',
         RATE_LIMIT_WINDOW: cfg.RATE_LIMIT_WINDOW || '15',
         CORS_ORIGIN: cfg.CORS_ORIGIN || '*',
+        SAMPLE_TOOL_NAME: cfg.SAMPLE_TOOL_NAME || '',
         NODE_ENV: 'production'
       }
     })

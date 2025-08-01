@@ -113,7 +113,13 @@ npm start
 
 # Or, run in development mode with auto-reload
 npm run dev
+
+# Add optional sample tool for educational purposes
+SAMPLE_TOOL_NAME=educational_echo npm run dev
 ```
+
+**Environment Variables:**
+- `SAMPLE_TOOL_NAME` - Optional sample tool name for educational purposes (adds echo tool to top of tools list)
 
 ### Testing with MCP Inspector
 
