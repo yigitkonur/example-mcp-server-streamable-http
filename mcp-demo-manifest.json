@@ -1,0 +1,24 @@
+{
+  "name": "calculator-learning-demo-streamable-http",
+  "transport": "streamable-http",
+  "categories": {
+    "core": [
+      "calculate",
+      "explain-calculation",
+      "generate-problems",
+      "calculator://constants"
+    ],
+    "extended": [
+      "batch_calculate",
+      "advanced_calculate",
+      "demo_progress",
+      "solve_math_problem",
+      "explain_formula",
+      "calculator_assistant",
+      "calculator://history/{calculationId}",
+      "calculator://stats",
+      "session://info/{sessionId}",
+      "formulas://library"
+    ]
+  }
+}
