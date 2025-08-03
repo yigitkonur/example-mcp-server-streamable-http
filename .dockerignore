@@ -1,0 +1,32 @@
+# Ignore dependencies, as they are installed inside the container
+node_modules
+
+# Ignore build artifacts, as they are generated inside the container
+dist
+build
+
+# Ignore local environment files and logs
+.env
+*.log
+npm-debug.log*
+
+# Ignore git and OS-specific files
+.git
+.gitignore
+.DS_Store
+
+# Ignore test files and coverage reports
+coverage
+.nyc_output
+*.test.ts
+*.spec.ts
+
+# Ignore documentation that's not needed in the container
+*.md
+!README.md
+
+# Ignore development configuration
+.vscode
+.idea
+*.swp
+*.swo

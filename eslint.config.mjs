@@ -70,25 +70,5 @@ export default [
       'eol-last': ['error', 'always'],
       'no-trailing-spaces': 'error'
     }
-  },
-  {
-    files: ['**/*.test.ts', '**/*.spec.ts', '**/tests/test-utils.ts'],
-    languageOptions: {
-      globals: {
-        describe: 'readonly',
-        test: 'readonly',
-        expect: 'readonly',
-        beforeEach: 'readonly',
-        afterEach: 'readonly',
-        beforeAll: 'readonly',
-        afterAll: 'readonly',
-        jest: 'readonly',
-        it: 'readonly'
-      }
-    },
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
-      '@typescript-eslint/no-non-null-assertion': 'off'
-    }
   }
 ];

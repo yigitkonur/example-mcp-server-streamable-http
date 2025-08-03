@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # We are extending the mcp-server service defined in the base docker-compose.yml
+  mcp-server:
+    # Make our server depend on Redis. This ensures Redis starts first.
+    depends_on:
+      redis:
+        condition: service_healthy
+    # Pass the Redis connection details as environment variables to our application.
+    # YOUR APPLICATION CODE MUST BE MODIFIED TO USE THESE VARIABLES.
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    # Add network for inter-container communication
+    networks:
+      - mcp-network
+
+  # Define the new Redis service.
+  redis:
+    # Use the official Redis image, the Alpine version is small and efficient.
+    image: redis:7-alpine
+    # Give the container a consistent hostname on the Docker network.
+    hostname: redis
+    # Ensure Redis restarts if it fails.
+    restart: always
+    # Set Redis configuration
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      ${REDIS_PASSWORD:+--requirepass $REDIS_PASSWORD}
+    # (Optional but recommended) Persist Redis data to a Docker volume
+    # so you don't lose session data if the container is recreated.
+    volumes:
+      - redis-data:/data
+    # Add network
+    networks:
+      - mcp-network
+    # Healthcheck for Redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "${REDIS_PASSWORD:+--pass $REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# Define the network for container communication
+networks:
+  mcp-network:
+    driver: bridge
+
+# Define the named volume for Redis persistence.
+volumes:
+  redis-data:

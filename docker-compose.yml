@@ -1,0 +1,55 @@
+# Docker Compose file version. '3.8' is a modern, stable version.
+version: '3.8'
+
+# Define the services (containers) that make up your application.
+services:
+  # The name of our service.
+  mcp-server:
+    # Tell Docker Compose to build the image from the Dockerfile in the current directory ('.').
+    build: .
+    # The name for the built container image.
+    image: mcp-stateful-server:latest
+    # Map a port on the host machine to a port inside the container.
+    # Format: "HOST_PORT:CONTAINER_PORT"
+    ports:
+      - "1453:1453"
+    # Pass environment variables to the container.
+    # This allows you to configure your application without changing the code.
+    environment:
+      # --- IMPORTANT ---
+      # Set USE_REDIS to true when running with Docker Compose
+      - USE_REDIS=true
+      - REDIS_HOST=redis  # Connect to the redis service name
+      - PORT=1453
+      - SESSION_TIMEOUT=1800000 # 30 minutes
+      - NODE_ENV=production
+      - CORS_ORIGIN=*
+      - RATE_LIMIT_MAX=1000
+      - RATE_LIMIT_WINDOW=900000 # 15 minutes
+      # - SAMPLE_TOOL_NAME=hello # Uncomment to enable the sample tool
+    # This service will start only after the 'redis' service is healthy
+    depends_on:
+      redis:
+        condition: service_healthy
+    # Restart policy. 'unless-stopped' ensures the container restarts if it crashes,
+    # but not if you manually stop it. Great for development and production.
+    restart: unless-stopped
+    # Healthcheck to ensure the container is running properly
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1453/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # New Redis service
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

@@ -95,6 +95,7 @@ temp/
 
 # TypeScript incremental build
 *.tsbuildinfo
+.tsbuildinfo
 
 # Next.js build output
 .next/
@@ -182,3 +183,20 @@ ipch/
 test.log
 debug.log
 error.log
+
+# Docker secrets
+redis_password.txt
+*.secret
+
+# Development environment cache
+.nvmrc-cache
+
+# Production deployment artifacts
+deployment/
+k8s/
+helm/
+
+# Backup files
+*.bak
+*.backup
+*.orig

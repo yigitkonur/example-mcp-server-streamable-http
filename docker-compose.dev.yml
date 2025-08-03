@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  # Development-specific overrides for the mcp-server
+  mcp-server:
+    # Use the builder stage which has all dependencies including devDependencies
+    build:
+      context: .
+      target: builder
+    # Mount only source code for hot-reloading (read-only)
+    # Let the container manage its own dist folder
+    volumes:
+      - ./src:/usr/src/app/src:ro
+    # Override the command to use the dev script with hot-reloading
+    command: npm run dev
+    # Development-specific environment variables
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    # Expose additional debug port if needed
+    ports:
+      - "9229:9229" # Node.js inspector port

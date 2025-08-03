@@ -4,18 +4,18 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Server",
+      "name": "Debug Server (Development)",
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "program": "${workspaceFolder}/src/production-server.ts",
-      "preLaunchTask": "npm: build",
+      "program": "${workspaceFolder}/src/server.ts",
       "outFiles": [
         "${workspaceFolder}/dist/**/*.js"
       ],
       "env": {
         "NODE_ENV": "development",
-        "PORT": "1453"
+        "PORT": "1453",
+        "USE_REDIS": "false"
       },
       "runtimeArgs": [
         "--loader",
@@ -27,39 +27,23 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Tests",
+      "name": "Debug Server (Production Mode)",
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--runInBand",
-        "--watchAll=false"
+      "program": "${workspaceFolder}/dist/server.js",
+      "preLaunchTask": "npm: build",
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
       ],
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
       "env": {
-        "NODE_ENV": "test"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Debug E2E Tests",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "program": "${workspaceFolder}/src/tests/e2e-test.ts",
-      "runtimeArgs": [
-        "--loader",
-        "tsx"
-      ],
+        "NODE_ENV": "production",
+        "PORT": "1453",
+        "USE_REDIS": "true",
+        "REDIS_HOST": "localhost"
+      },
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "env": {
-        "NODE_ENV": "test",
-        "PORT": "1454"
-      }
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
