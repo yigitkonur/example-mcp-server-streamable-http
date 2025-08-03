@@ -15,8 +15,8 @@
  */
 
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 
 // =================================================================
@@ -162,7 +162,7 @@ export const calculateArgsSchema = z.object({
   a: z.number().describe('First operand'),
   b: z.number().describe('Second operand'),
   op: z.enum(['add', 'subtract', 'multiply', 'divide']).describe('Operation to perform'),
-  stream: z.boolean().optional().describe('Stream intermediate results')
+  stream: z.boolean().optional().describe('Stream intermediate results'),
 });
 
 /**
@@ -170,12 +170,16 @@ export const calculateArgsSchema = z.object({
  * Validates arrays of calculations for batch processing.
  */
 export const batchCalculateArgsSchema = z.object({
-  calculations: z.array(z.object({
-    a: z.number(),
-    b: z.number(),
-    op: z.enum(['add', 'subtract', 'multiply', 'divide'])
-  })).describe('Array of calculations to perform'),
-  reportProgress: z.boolean().optional().describe('Report progress during batch processing')
+  calculations: z
+    .array(
+      z.object({
+        a: z.number(),
+        b: z.number(),
+        op: z.enum(['add', 'subtract', 'multiply', 'divide']),
+      }),
+    )
+    .describe('Array of calculations to perform'),
+  reportProgress: z.boolean().optional().describe('Report progress during batch processing'),
 });
 
 /**
@@ -183,9 +187,11 @@ export const batchCalculateArgsSchema = z.object({
  * Validates scientific and mathematical operations.
  */
 export const advancedCalculateArgsSchema = z.object({
-  operation: z.enum(['factorial', 'power', 'sqrt', 'log', 'sin', 'cos', 'tan']).describe('Advanced operation'),
+  operation: z
+    .enum(['factorial', 'power', 'sqrt', 'log', 'sin', 'cos', 'tan'])
+    .describe('Advanced operation'),
   value: z.number().describe('Input value'),
-  base: z.number().optional().describe('Base for power or logarithm operations')
+  base: z.number().optional().describe('Base for power or logarithm operations'),
 });
 
 /**
@@ -193,7 +199,7 @@ export const advancedCalculateArgsSchema = z.object({
  * Validates parameters for the progress notification demonstration.
  */
 export const demoProgressArgsSchema = z.object({
-  steps: z.number().default(5).describe('Number of progress steps')
+  steps: z.number().default(5).describe('Number of progress steps'),
 });
 
 /**
@@ -201,7 +207,7 @@ export const demoProgressArgsSchema = z.object({
  * This is used when SAMPLE_TOOL_NAME environment variable is set.
  */
 export const sampleToolArgsSchema = z.object({
-  message: z.string().describe('Message to echo back')
+  message: z.string().describe('Message to echo back'),
 });
 
 // =================================================================
@@ -220,7 +226,7 @@ export const sampleToolArgsSchema = z.object({
  */
 export const explainCalculationArgsSchema = z.object({
   operation: z.string().describe('The calculation to explain'),
-  level: z.string().optional().describe('Explanation level: basic, intermediate, advanced')
+  level: z.string().optional().describe('Explanation level: basic, intermediate, advanced'),
 });
 
 /**
@@ -230,7 +236,7 @@ export const explainCalculationArgsSchema = z.object({
 export const generateProblemsArgsSchema = z.object({
   topic: z.string().describe('Math topic (e.g., "fractions", "algebra", "geometry")'),
   difficulty: z.string().describe('Difficulty level: easy, medium, hard'),
-  count: z.string().describe('Number of problems to generate')
+  count: z.string().describe('Number of problems to generate'),
 });
 
 /**
@@ -239,7 +245,7 @@ export const generateProblemsArgsSchema = z.object({
  */
 export const solveMathProblemArgsSchema = z.object({
   problem: z.string().describe('The problem to solve'),
-  showWork: z.string().describe('Show detailed work')
+  showWork: z.string().describe('Show detailed work'),
 });
 
 /**
@@ -248,7 +254,7 @@ export const solveMathProblemArgsSchema = z.object({
  */
 export const explainFormulaArgsSchema = z.object({
   formula: z.string().describe('The formula to explain'),
-  context: z.string().optional().describe('Application context')
+  context: z.string().optional().describe('Application context'),
 });
 
 /**
@@ -256,7 +262,7 @@ export const explainFormulaArgsSchema = z.object({
  * Validates parameters for general calculation assistance.
  */
 export const calculatorAssistantArgsSchema = z.object({
-  query: z.string().describe('What you need help calculating')
+  query: z.string().describe('What you need help calculating'),
 });
 
 // =================================================================
@@ -328,7 +334,11 @@ export interface ServerConfig {
  * and handle application-specific failures with more granularity.
  */
 export class CalculatorServerError extends McpError {
-  constructor(code: number, message: string, public readonly context?: unknown) {
+  constructor(
+    code: number,
+    message: string,
+    public readonly context?: unknown,
+  ) {
     super(code, message, context);
     this.name = this.constructor.name;
   }
@@ -354,7 +364,11 @@ export class SessionNotFoundError extends CalculatorServerError {
  * in a generic `InternalError` being sent to the client.
  */
 export class StorageOperationFailedError extends CalculatorServerError {
-  constructor(message: string, public readonly originalError: Error, context?: unknown) {
+  constructor(
+    message: string,
+    public readonly originalError: Error,
+    context?: unknown,
+  ) {
     super(ErrorCode.InternalError, message, context);
   }
 }

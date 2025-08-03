@@ -19,4 +19,4 @@ services:
       - LOG_LEVEL=debug
     # Expose additional debug port if needed
     ports:
-      - "9229:9229" # Node.js inspector port
+      - '9229:9229' # Node.js inspector port

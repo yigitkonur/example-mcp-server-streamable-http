@@ -1,6 +1,6 @@
 <div align="center">
 
-**[STDIO](https://github.com/yigitkonur/example-mcp-server-stdio) | [Stateful HTTP](https://github.com/yigitkonur/example-mcp-server-streamable-http) | [Stateless HTTP](https://github.com/yigitkonur/example-mcp-server-streamable-http-stateless) | [Legacy SSE](https://github.com/yigitkonur/example-mcp-server-sse)**
+**[STDIO](https://github.com/yigitkonur/example-mcp-server-stdio) | [Stateful HTTP](https://github.com/yigitkonur/example-mcp-server-streamable-http) | [Stateless HTTP](https://github.com/yigitkonur/example-mcp-server-streamable-http-stateless) | [SSE](https://github.com/yigitkonur/example-mcp-server-sse)**
 
 </div>
 
@@ -17,7 +17,7 @@
 [![SDK](https://img.shields.io/badge/SDK-Production%20Ready-green)](https://github.com/modelcontextprotocol/typescript-sdk)
 [![Architecture](https://img.shields.io/badge/Architecture-Resilient%20Hybrid-gold)]()
 
-*Learn by building a world-class, horizontally-scalable MCP server that is robust by design.*
+_Learn by building a world-class, horizontally-scalable MCP server that is robust by design._
 
 </div>
 
@@ -37,10 +37,10 @@ This project is designed to teach five core concepts:
 
 This stateful, distributed architecture is the ideal choice for complex, high-availability applications:
 
-*   **Enterprise Applications:** Systems that require persistent user sessions and must remain available during deployments or node failures.
-*   **Collaborative Tools:** Scenarios where multiple users or agents interact with a shared context that must be centrally managed.
-*   **Multi-Turn Conversational Agents:** Complex chatbots or agents that need to remember the entire history of an interaction to provide coherent responses.
-*   **Any system where losing session state or failing unpredictably is unacceptable.**
+- **Enterprise Applications:** Systems that require persistent user sessions and must remain available during deployments or node failures.
+- **Collaborative Tools:** Scenarios where multiple users or agents interact with a shared context that must be centrally managed.
+- **Multi-Turn Conversational Agents:** Complex chatbots or agents that need to remember the entire history of an interaction to provide coherent responses.
+- **Any system where losing session state or failing unpredictably is unacceptable.**
 
 ## 🚀 Quick Start
 
@@ -147,6 +147,7 @@ This section highlights the most important code patterns that define this archit
 **The Principle:** Code to an interface, not a concrete implementation. This decouples our application logic from the storage technology.
 
 **The Implementation (`src/types.ts`):**
+
 ```typescript
 // The contract that any storage backend must adhere to.
 export interface ISessionStore {
@@ -163,9 +164,12 @@ export interface ISessionStore {
 **The Principle:** To achieve horizontal scalability without sticky sessions, any server node must be able to handle a request for any active session.
 
 **The Implementation (`src/server.ts`):**
+
 ```typescript
 // DRY Implementation: Single helper function eliminates code duplication
-async function getOrCreateInstances(sessionId: string): Promise<{ transport: StreamableHTTPServerTransport; server: McpServer }> {
+async function getOrCreateInstances(
+  sessionId: string,
+): Promise<{ transport: StreamableHTTPServerTransport; server: McpServer }> {
   // 1. Check high-performance local cache first
   let instances = sessionInstances.get(sessionId);
   if (instances) return instances;
@@ -189,9 +193,10 @@ const instances = await getOrCreateInstances(sessionId);
 
 ### Pattern 3: Critical Initialization Order
 
-**The Principle:** To prevent race conditions in a distributed system, the session record must be saved to the persistent store *before* the `McpServer` instance is created.
+**The Principle:** To prevent race conditions in a distributed system, the session record must be saved to the persistent store _before_ the `McpServer` instance is created.
 
 **The Implementation (`src/server.ts`):**
+
 ```typescript
 // 1. A new session request arrives. Generate a session ID.
 const newSessionId = randomUUID();
@@ -216,13 +221,19 @@ const server = await createMCPServer(newSessionId);
 
 ```typescript
 // A base class for all our application's errors.
-export class CalculatorServerError extends McpError { /* ... */ }
+export class CalculatorServerError extends McpError {
+  /* ... */
+}
 
 // A specific error for when a session is not found.
-export class SessionNotFoundError extends CalculatorServerError { /* ... */ }
+export class SessionNotFoundError extends CalculatorServerError {
+  /* ... */
+}
 
 // A specific error for when a database/Redis operation fails.
-export class StorageOperationFailedError extends CalculatorServerError { /* ... */ }
+export class StorageOperationFailedError extends CalculatorServerError {
+  /* ... */
+}
 ```
 
 **2. Throw Specific Errors in Logic (`src/server.ts`):** Instead of returning generic errors, our code throws these specific types.
@@ -263,7 +274,7 @@ app.use((err: Error, req: Request, res: Response, next: express.NextFunction) =>
     message = err.message;
     data = err.data;
   }
-  
+
   // 3. Always send protocol-compliant JSON-RPC error responses
   res.status(500).json({ jsonrpc: '2.0', id: rpcId, error: { code, message, data } });
 });
@@ -273,15 +284,15 @@ app.use((err: Error, req: Request, res: Response, next: express.NextFunction) =>
 
 This server implements a comprehensive set of capabilities to demonstrate a production-grade system.
 
-| Feature | Description | Key Pattern Demonstrated |
-| :--- | :--- | :--- |
-| **Hybrid Storage** | Switches between in-memory and Redis via `USE_REDIS` env var. | **Strategy Pattern** and environment-based configuration. |
-| **Persistent History**| Calculation history is saved as part of the session data. | **Stateful Tool Use:** Tools modify session state which is then persisted. |
-| **Gold-Standard Error Handling**| Complete error boundary coverage with typed errors and comprehensive TSDoc documentation. | **Multi-Layered Defense:** Custom error hierarchy + global safety net + contextual error data. |
-| **DRY Code Architecture**| Single `getOrCreateInstances` helper eliminates reconstruction logic duplication. | **Maintainability:** Critical patterns abstracted into reusable, well-documented functions. |
-| **Health Checks** | `/health` endpoint reports server status, including Redis connectivity. | **Observability:** Providing critical system status for monitoring. |
-| **Prometheus Metrics**| `/metrics` endpoint exposes `mcp_active_sessions` and more. | **Monitoring:** Exposing key performance indicators for a metrics scraper. |
-| **Complete Documentation**| Every tool, resource, and prompt handler documents exact failure modes with `@throws` annotations. | **Predictable APIs:** Clear contracts for all failure scenarios. |
+| Feature                          | Description                                                                                        | Key Pattern Demonstrated                                                                       |
+| :------------------------------- | :------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------- |
+| **Hybrid Storage**               | Switches between in-memory and Redis via `USE_REDIS` env var.                                      | **Strategy Pattern** and environment-based configuration.                                      |
+| **Persistent History**           | Calculation history is saved as part of the session data.                                          | **Stateful Tool Use:** Tools modify session state which is then persisted.                     |
+| **Gold-Standard Error Handling** | Complete error boundary coverage with typed errors and comprehensive TSDoc documentation.          | **Multi-Layered Defense:** Custom error hierarchy + global safety net + contextual error data. |
+| **DRY Code Architecture**        | Single `getOrCreateInstances` helper eliminates reconstruction logic duplication.                  | **Maintainability:** Critical patterns abstracted into reusable, well-documented functions.    |
+| **Health Checks**                | `/health` endpoint reports server status, including Redis connectivity.                            | **Observability:** Providing critical system status for monitoring.                            |
+| **Prometheus Metrics**           | `/metrics` endpoint exposes `mcp_active_sessions` and more.                                        | **Monitoring:** Exposing key performance indicators for a metrics scraper.                     |
+| **Complete Documentation**       | Every tool, resource, and prompt handler documents exact failure modes with `@throws` annotations. | **Predictable APIs:** Clear contracts for all failure scenarios.                               |
 
 ## 🧪 Testing & Validation
 
@@ -335,18 +346,18 @@ npx @modelcontextprotocol/inspector --cli http://localhost:1453/mcp
 
 The server is configured using environment variables.
 
-| Variable | Description | Default |
-| :--- |:--- |:--- |
-| `PORT` | The port for the HTTP server to listen on. | `1453` |
-| `USE_REDIS`| **Set to `true` to enable Redis for distributed state.** | `false` |
-| `REDIS_URL` | The connection string for the Redis instance. | `redis://localhost:6379` |
-| `LOG_LEVEL` | Logging verbosity (`debug`, `info`, `warn`, `error`). | `info` |
-| `CORS_ORIGIN`| Allowed origin for CORS. Use a specific domain in production. | `*` |
+| Variable      | Description                                                   | Default                  |
+| :------------ | :------------------------------------------------------------ | :----------------------- |
+| `PORT`        | The port for the HTTP server to listen on.                    | `1453`                   |
+| `USE_REDIS`   | **Set to `true` to enable Redis for distributed state.**      | `false`                  |
+| `REDIS_URL`   | The connection string for the Redis instance.                 | `redis://localhost:6379` |
+| `LOG_LEVEL`   | Logging verbosity (`debug`, `info`, `warn`, `error`).         | `info`                   |
+| `CORS_ORIGIN` | Allowed origin for CORS. Use a specific domain in production. | `*`                      |
 
 ### Production Deployment
 
 This server is designed for high-availability, horizontally-scaled deployments.
 
-*   **Containerization:** The multi-stage `Dockerfile` creates a lean, secure production image. The `docker-compose.yml` file is ready for multi-replica scaling (`docker-compose up --scale mcp-server=4`).
-*   **Load Balancing:** Deploy behind any standard load balancer. **Sticky sessions are not required** due to the "Just-in-Time Reconstruction" architecture.
-*   **Zero-Downtime Updates:** Because session state is externalized to Redis, you can perform rolling deployments of new server versions without interrupting or losing active user sessions.
+- **Containerization:** The multi-stage `Dockerfile` creates a lean, secure production image. The `docker-compose.yml` file is ready for multi-replica scaling (`docker-compose up --scale mcp-server=4`).
+- **Load Balancing:** Deploy behind any standard load balancer. **Sticky sessions are not required** due to the "Just-in-Time Reconstruction" architecture.
+- **Zero-Downtime Updates:** Because session state is externalized to Redis, you can perform rolling deployments of new server versions without interrupting or losing active user sessions.

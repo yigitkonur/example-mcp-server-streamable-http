@@ -1,74 +1,29 @@
-import js from '@eslint/js';
-import typescript from '@typescript-eslint/eslint-plugin';
-import parser from '@typescript-eslint/parser';
+// eslint.config.mjs
+import tseslint from '@typescript-eslint/eslint-plugin';
+import tsparser from '@typescript-eslint/parser';
+import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default [
-  js.configs.recommended,
   {
-    files: ['**/*.ts', '**/*.tsx'],
+    files: ['**/*.{ts,tsx}'],
     languageOptions: {
-      parser: parser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        project: './tsconfig.eslint.json'
-      },
-      globals: {
-        console: 'readonly',
-        process: 'readonly',
-        Buffer: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        exports: 'readonly',
-        module: 'readonly',
-        require: 'readonly',
-        global: 'readonly',
-        URL: 'readonly',
-        URLSearchParams: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        setImmediate: 'readonly',
-        clearImmediate: 'readonly',
-        fetch: 'readonly'
-      }
+      parser: tsparser,
+      parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
     },
-    plugins: {
-      '@typescript-eslint': typescript
-    },
+    plugins: { '@typescript-eslint': tseslint },
     rules: {
-      // TypeScript specific rules
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-non-null-assertion': 'warn',
-      
-      // General rules
-      'no-console': 'off',
-      'no-unused-vars': 'off', // Use TypeScript's version
-      'prefer-const': 'error',
-      'no-var': 'error',
-      'eqeqeq': ['error', 'always'],
-      'curly': ['error', 'all'],
-      'brace-style': ['error', '1tbs'],
-      'semi': ['error', 'always'],
-      'quotes': ['error', 'single', { avoidEscape: true }],
-      'indent': ['error', 2, { SwitchCase: 1 }],
-      'comma-dangle': ['error', 'never'],
-      'object-curly-spacing': ['error', 'always'],
-      'array-bracket-spacing': ['error', 'never'],
-      'space-before-function-paren': ['error', {
-        anonymous: 'always',
-        named: 'never',
-        asyncArrow: 'always'
-      }],
-      'keyword-spacing': ['error', { before: true, after: true }],
-      'space-infix-ops': 'error',
-      'arrow-spacing': ['error', { before: true, after: true }],
-      'no-multiple-empty-lines': ['error', { max: 1, maxEOF: 0 }],
-      'eol-last': ['error', 'always'],
-      'no-trailing-spaces': 'error'
-    }
-  }
+      // Prevent the verbatimModuleSyntax errors from ever returning
+      '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+
+      // Hygiene
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      'no-console': ['warn', { allow: ['log', 'warn', 'error'] }],
+      'no-debugger': 'error',
+    },
+  },
+  // Disable rules that fight Prettier
+  eslintConfigPrettier,
 ];

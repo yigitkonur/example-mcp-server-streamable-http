@@ -20,35 +20,31 @@
  *   specific error types it can throw, creating a clear contract for consumers.
  */
 
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import { createServer, Server } from 'http';
+import { createServer } from 'http';
+import type { Server } from 'http';
 import { randomUUID } from 'crypto';
-import IORedis, { Redis, RedisOptions } from 'ioredis';
+import IORedis from 'ioredis';
+import type { Redis, RedisOptions } from 'ioredis';
 import { register as prometheusRegister, Counter, Gauge } from 'prom-client';
 
 // MCP SDK imports
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import {
+import { isInitializeRequest, McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+import type {
   CallToolResult,
   GetPromptResult,
   ReadResourceResult,
-  isInitializeRequest,
   JSONRPCMessage,
-  McpError,
-  ErrorCode
 } from '@modelcontextprotocol/sdk/types.js';
-import { EventStore } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import type { EventStore } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 
 // Import all types and schemas from our data contract layer
 import {
-  ISessionStore,
-  SessionData,
-  Calculation,
-  TransportWithSessionId,
-  ServerConfig,
   calculateArgsSchema,
   batchCalculateArgsSchema,
   advancedCalculateArgsSchema,
@@ -62,6 +58,13 @@ import {
   SessionNotFoundError,
   StorageOperationFailedError,
   calculatorAssistantArgsSchema,
+} from './types.js';
+import type {
+  ISessionStore,
+  SessionData,
+  Calculation,
+  TransportWithSessionId,
+  ServerConfig,
   CalculateArgs,
   BatchCalculateArgs,
   AdvancedCalculateArgs,
@@ -71,7 +74,7 @@ import {
   GenerateProblemsArgs,
   SolveMathProblemArgs,
   ExplainFormulaArgs,
-  CalculatorAssistantArgs
+  CalculatorAssistantArgs,
 } from './types.js';
 
 // =================================================================
@@ -95,8 +98,8 @@ const config: ServerConfig = {
   logLevel: process.env['LOG_LEVEL'] || 'info',
   rateLimit: {
     windowMs: parseInt(process.env['RATE_LIMIT_WINDOW'] || '900000'), // 15 minutes
-    max: parseInt(process.env['RATE_LIMIT_MAX'] || '1000')
-  }
+    max: parseInt(process.env['RATE_LIMIT_MAX'] || '1000'),
+  },
 };
 
 /**
@@ -131,12 +134,12 @@ let eventStore: EventStore;
 const calculationCounter = new Counter({
   name: 'mcp_calculations_total',
   help: 'Total number of calculations performed',
-  labelNames: ['operation']
+  labelNames: ['operation'],
 });
 
 const activeSessionsGauge = new Gauge({
   name: 'mcp_active_sessions',
-  help: 'Number of active sessions'
+  help: 'Number of active sessions',
 });
 
 /**
@@ -152,10 +155,13 @@ const activeSessionsGauge = new Gauge({
  * we reconstruct the instances and cache them here. This enables horizontal scaling
  * without sticky sessions.
  */
-const sessionInstances = new Map<string, {
-  transport: StreamableHTTPServerTransport;
-  server: McpServer;
-}>();
+const sessionInstances = new Map<
+  string,
+  {
+    transport: StreamableHTTPServerTransport;
+    server: McpServer;
+  }
+>();
 
 // =================================================================
 // SECTION 2: STORAGE IMPLEMENTATIONS (THE STRATEGY PATTERN)
@@ -216,7 +222,7 @@ class InMemorySessionStore implements ISessionStore {
       startTime: data.startTime,
       lastActivity: data.lastActivity,
       requestCount: data.requestCount,
-      calculations: data.calculations
+      calculations: data.calculations,
     };
     this.sessions.set(sessionId, storable as SessionData);
   }
@@ -260,11 +266,14 @@ class InMemorySessionStore implements ISessionStore {
  * - Ring Buffer: Bounded memory usage with configurable limits
  */
 class InMemoryEventStore implements EventStore {
-  private events: Map<string, {
-    streamId: string;
-    message: JSONRPCMessage;
-    timestamp: number;
-  }> = new Map();
+  private events: Map<
+    string,
+    {
+      streamId: string;
+      message: JSONRPCMessage;
+      timestamp: number;
+    }
+  > = new Map();
 
   private readonly maxAge: number = 24 * 60 * 60 * 1000; // 24 hours
   private readonly maxEvents: number = 10000;
@@ -289,7 +298,7 @@ class InMemoryEventStore implements EventStore {
     this.events.set(eventId, {
       streamId,
       message,
-      timestamp
+      timestamp,
     });
 
     /**
@@ -298,8 +307,9 @@ class InMemoryEventStore implements EventStore {
      * The trade-off: Very old events become unreplayable, but the system stays stable.
      */
     if (this.events.size > this.maxEvents) {
-      const sortedEvents = [...this.events.entries()]
-        .sort(([, a], [, b]) => a.timestamp - b.timestamp);
+      const sortedEvents = [...this.events.entries()].sort(
+        ([, a], [, b]) => a.timestamp - b.timestamp,
+      );
 
       const eventsToDelete = this.events.size - this.maxEvents;
       for (let i = 0; i < eventsToDelete; i++) {
@@ -315,7 +325,7 @@ class InMemoryEventStore implements EventStore {
 
   async replayEventsAfter(
     lastEventId: string,
-    { send }: { send: (eventId: string, message: JSONRPCMessage) => Promise<void> }
+    { send }: { send: (eventId: string, message: JSONRPCMessage) => Promise<void> },
   ): Promise<string> {
     if (!lastEventId || !this.events.has(lastEventId)) {
       return '';
@@ -418,7 +428,7 @@ class RedisSessionStore implements ISessionStore {
         startTime: data.startTime,
         lastActivity: data.lastActivity,
         requestCount: data.requestCount,
-        calculations: data.calculations
+        calculations: data.calculations,
       };
 
       /**
@@ -430,7 +440,7 @@ class RedisSessionStore implements ISessionStore {
         `mcp_session:${sessionId}`,
         JSON.stringify(serializable),
         'EX',
-        this.sessionTimeoutSeconds
+        this.sessionTimeoutSeconds,
       );
     } catch (error) {
       /**
@@ -443,7 +453,9 @@ class RedisSessionStore implements ISessionStore {
        * calling code and prevents leaking raw error messages. The original error is
        * passed along for detailed server-side logging.
        */
-      throw new StorageOperationFailedError('Failed to save session state', error as Error, { sessionId });
+      throw new StorageOperationFailedError('Failed to save session state', error as Error, {
+        sessionId,
+      });
     }
   }
 
@@ -501,9 +513,12 @@ class RedisEventStore implements EventStore {
      */
     const eventId = await this.redis.xadd(
       streamKey,
-      'MAXLEN', '~', this.maxEvents.toString(),
+      'MAXLEN',
+      '~',
+      this.maxEvents.toString(),
       '*', // Auto-generate ID with timestamp ordering
-      'data', messageData
+      'data',
+      messageData,
     );
 
     // Set TTL on the entire stream for automatic cleanup
@@ -514,7 +529,7 @@ class RedisEventStore implements EventStore {
 
   async replayEventsAfter(
     lastEventId: string,
-    { send }: { send: (eventId: string, message: JSONRPCMessage) => Promise<void> }
+    { send }: { send: (eventId: string, message: JSONRPCMessage) => Promise<void> },
   ): Promise<string> {
     /**
      * Extract stream ID from Redis Stream event ID.
@@ -533,9 +548,7 @@ class RedisEventStore implements EventStore {
      * Use Redis XREAD to efficiently read all events after lastEventId.
      * WHY: This is much more efficient than scanning and filtering manually.
      */
-    const events = await this.redis.xread(
-      'STREAMS', streamKey, lastEventId
-    );
+    const events = await this.redis.xread('STREAMS', streamKey, lastEventId);
 
     if (!events || events.length === 0) {
       return streamId || '';
@@ -580,7 +593,10 @@ class RedisEventStore implements EventStore {
  * - Factory Pattern: Creates appropriate storage implementations
  * - Strategy Pattern: Returns implementations of common interfaces
  */
-async function initializeStores(): Promise<{ sessionStore: ISessionStore; eventStore: EventStore }> {
+async function initializeStores(): Promise<{
+  sessionStore: ISessionStore;
+  eventStore: EventStore;
+}> {
   if (config.useRedis) {
     console.log('✅ Using Redis for distributed state management.');
 
@@ -606,7 +622,7 @@ async function initializeStores(): Promise<{ sessionStore: ISessionStore; eventS
         }
         return false;
       },
-      lazyConnect: false
+      lazyConnect: false,
     };
 
     if (process.env['REDIS_PASSWORD']) {
@@ -638,13 +654,13 @@ async function initializeStores(): Promise<{ sessionStore: ISessionStore; eventS
 
     return {
       sessionStore: new RedisSessionStore(redisClient, config.sessionTimeout),
-      eventStore: new RedisEventStore(redisClient)
+      eventStore: new RedisEventStore(redisClient),
     };
   } else {
     console.log('✅ Using In-Memory for single-node state management.');
     return {
       sessionStore: new InMemorySessionStore(config.sessionTimeout),
-      eventStore: new InMemoryEventStore()
+      eventStore: new InMemoryEventStore(),
     };
   }
 }
@@ -665,22 +681,22 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
   const server = new McpServer(
     {
       name: 'calculator-learning-demo-streamable-http',
-      version: '1.0.0'
+      version: '1.0.0',
     },
     {
       capabilities: {
         tools: {
-          listChanged: true
+          listChanged: true,
         },
         resources: {
           subscribe: true,
-          listChanged: true
+          listChanged: true,
         },
         prompts: {
-          listChanged: true
-        }
-      }
-    }
+          listChanged: true,
+        },
+      },
+    },
   );
 
   /**
@@ -721,12 +737,14 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
        */
       async ({ message }: SampleToolArgs): Promise<CallToolResult> => {
         return {
-          content: [{
-            type: 'text',
-            text: `Sample tool "${sampleToolName}" received: ${message}`
-          }]
+          content: [
+            {
+              type: 'text',
+              text: `Sample tool "${sampleToolName}" received: ${message}`,
+            },
+          ],
         };
-      }
+      },
     );
   }
 
@@ -768,22 +786,22 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
           params: {
             progressToken: requestId,
             progress: 0.2,
-            data: `Starting ${op} calculation...`
-          }
+            data: `Starting ${op} calculation...`,
+          },
         });
 
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         await sendNotification({
           method: 'notifications/progress',
           params: {
             progressToken: requestId,
             progress: 0.5,
-            data: `Processing: ${a} ${op} ${b}`
-          }
+            data: `Processing: ${a} ${op} ${b}`,
+          },
         });
 
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       let result: number;
@@ -819,7 +837,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
         timestamp: Date.now(),
         operation: op,
         inputs: [a, b],
-        result
+        result,
       };
 
       sessionData.calculations.push(calculation);
@@ -844,8 +862,8 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
           params: {
             progressToken: requestId,
             progress: 1.0,
-            data: `Calculation complete: ${result}`
-          }
+            data: `Calculation complete: ${result}`,
+          },
         });
       }
 
@@ -853,12 +871,12 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
         content: [
           {
             type: 'text',
-            text: `${a} ${op} ${b} = ${result}`
-          }
+            text: `${a} ${op} ${b} = ${result}`,
+          },
         ],
-        isError: false
+        isError: false,
       };
-    }
+    },
   );
 
   // --- Tool: batch_calculate ---
@@ -879,7 +897,10 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
      * @throws {McpError} with code `InvalidParams` if any calculation involves division by zero.
      * @throws {StorageOperationFailedError} If persisting the updated session state fails.
      */
-    async ({ calculations, reportProgress }: BatchCalculateArgs, { sendNotification }): Promise<CallToolResult> => {
+    async (
+      { calculations, reportProgress }: BatchCalculateArgs,
+      { sendNotification },
+    ): Promise<CallToolResult> => {
       const sessionData = await getSessionData();
       const results = [];
       const batchId = randomUUID();
@@ -897,8 +918,8 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
             params: {
               progressToken: batchId,
               progress,
-              data: `Processing calculation ${i + 1}/${calculations.length}: ${calc.a} ${calc.op} ${calc.b}`
-            }
+              data: `Processing calculation ${i + 1}/${calculations.length}: ${calc.a} ${calc.op} ${calc.b}`,
+            },
           });
         }
 
@@ -925,7 +946,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
         results.push({
           input: calc,
           result,
-          expression: `${calc.a} ${calc.op} ${calc.b} = ${result}`
+          expression: `${calc.a} ${calc.op} ${calc.b} = ${result}`,
         });
 
         // Store each calculation in history
@@ -935,7 +956,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
           timestamp: Date.now(),
           operation: calc.op,
           inputs: [calc.a, calc.b],
-          result
+          result,
         };
 
         sessionData.calculations.push(calculation);
@@ -953,14 +974,14 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
         content: [
           {
             type: 'text',
-            text: `Batch calculation completed. Results:\n${results.map(r =>
-              'error' in r ? `Error: ${r.error}` : r.expression
-            ).join('\n')}`
-          }
+            text: `Batch calculation completed. Results:\n${results
+              .map((r) => ('error' in r ? `Error: ${r.error}` : r.expression))
+              .join('\n')}`,
+          },
         ],
-        isError: false
+        isError: false,
       };
-    }
+    },
   );
 
   // --- Tool: advanced_calculate ---
@@ -988,7 +1009,8 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
           if (value < 0 || !Number.isInteger(value)) {
             throw new McpError(ErrorCode.InvalidParams, 'Factorial requires non-negative integer');
           }
-          result = value <= 1 ? 1 : Array.from({ length: value }, (_, i) => i + 1).reduce((a, b) => a * b);
+          result =
+            value <= 1 ? 1 : Array.from({ length: value }, (_, i) => i + 1).reduce((a, b) => a * b);
           break;
         case 'power':
           if (base === undefined) {
@@ -1026,7 +1048,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
         timestamp: Date.now(),
         operation,
         inputs: base !== undefined ? [value, base] : [value],
-        result
+        result,
       };
 
       sessionData.calculations.push(calculation);
@@ -1041,12 +1063,12 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
         content: [
           {
             type: 'text',
-            text: `${operation}(${value}${base !== undefined ? `, ${base}` : ''}) = ${result}`
-          }
+            text: `${operation}(${value}${base !== undefined ? `, ${base}` : ''}) = ${result}`,
+          },
         ],
-        isError: false
+        isError: false,
       };
-    }
+    },
   );
 
   // --- Tool: demo_progress ---
@@ -1075,24 +1097,24 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
           params: {
             progressToken,
             progress: i / steps,
-            data: `Step ${i}/${steps} completed`
-          }
+            data: `Step ${i}/${steps} completed`,
+          },
         });
 
         // Simulate work
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
 
       return {
         content: [
           {
             type: 'text',
-            text: `Progress demonstration completed with ${steps} steps`
-          }
+            text: `Progress demonstration completed with ${steps} steps`,
+          },
         ],
-        isError: false
+        isError: false,
       };
-    }
+    },
   );
 
   // ==========================================
@@ -1112,7 +1134,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
     {
       title: 'Calculator Constants',
       description: 'Mathematical constants',
-      mimeType: 'application/json'
+      mimeType: 'application/json',
     },
     /**
      * @summary Provides access to common mathematical constants.
@@ -1126,17 +1148,21 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
           {
             uri: 'calculator://constants',
             mimeType: 'application/json',
-            text: JSON.stringify({
-              pi: Math.PI,
-              e: Math.E,
-              sqrt2: Math.SQRT2,
-              ln2: Math.LN2,
-              ln10: Math.LN10
-            }, null, 2)
-          }
-        ]
+            text: JSON.stringify(
+              {
+                pi: Math.PI,
+                e: Math.E,
+                sqrt2: Math.SQRT2,
+                ln2: Math.LN2,
+                ln10: Math.LN10,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
       };
-    }
+    },
   );
 
   // --- Resource: calculation-history ---
@@ -1149,7 +1175,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
     {
       title: 'Calculation History',
       description: 'Retrieve specific calculation from history',
-      mimeType: 'application/json'
+      mimeType: 'application/json',
     },
     /**
      * @summary Retrieves a specific calculation from the session's history.
@@ -1165,7 +1191,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
       const calculationId = uriStr.split('/').pop();
       const sessionData = await getSessionData();
 
-      const calculation = sessionData.calculations.find(c => c.id === calculationId);
+      const calculation = sessionData.calculations.find((c) => c.id === calculationId);
       if (!calculation) {
         throw new McpError(ErrorCode.InvalidRequest, `Calculation ${calculationId} not found`);
       }
@@ -1175,11 +1201,11 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
           {
             uri: `calculator://history/${calculationId}`,
             mimeType: 'application/json',
-            text: JSON.stringify(calculation, null, 2)
-          }
-        ]
+            text: JSON.stringify(calculation, null, 2),
+          },
+        ],
       };
-    }
+    },
   );
 
   // --- Resource: calculator-stats ---
@@ -1190,7 +1216,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
     {
       title: 'Calculator Statistics',
       description: 'Aggregate statistics across all sessions',
-      mimeType: 'application/json'
+      mimeType: 'application/json',
     },
     /**
      * @summary Provides aggregate statistics across all sessions from Prometheus metrics.
@@ -1201,26 +1227,32 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
     async (): Promise<ReadResourceResult> => {
       // Get metrics from Prometheus registry
       const metrics = await prometheusRegister.getMetricsAsJSON();
-      const calculationMetric = metrics.find(m => m.name === 'mcp_calculations_total');
-      const sessionMetric = metrics.find(m => m.name === 'mcp_active_sessions');
+      const calculationMetric = metrics.find((m) => m.name === 'mcp_calculations_total');
+      const sessionMetric = metrics.find((m) => m.name === 'mcp_active_sessions');
 
       return {
         contents: [
           {
             uri: 'calculator://stats',
             mimeType: 'application/json',
-            text: JSON.stringify({
-              totalCalculations: calculationMetric?.values?.reduce((sum, v) => sum + (v.value || 0), 0) || 0,
-              activeSessions: sessionMetric?.values?.[0]?.value || 0,
-              operationBreakdown: calculationMetric?.values?.map(v => ({
-                operation: v.labels?.['operation'],
-                count: v.value
-              })) || []
-            }, null, 2)
-          }
-        ]
+            text: JSON.stringify(
+              {
+                totalCalculations:
+                  calculationMetric?.values?.reduce((sum, v) => sum + (v.value || 0), 0) || 0,
+                activeSessions: sessionMetric?.values?.[0]?.value || 0,
+                operationBreakdown:
+                  calculationMetric?.values?.map((v) => ({
+                    operation: v.labels?.['operation'],
+                    count: v.value,
+                  })) || [],
+              },
+              null,
+              2,
+            ),
+          },
+        ],
       };
-    }
+    },
   );
 
   // --- Resource: session-info ---
@@ -1231,7 +1263,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
     {
       title: 'Session Information',
       description: 'Current session details',
-      mimeType: 'application/json'
+      mimeType: 'application/json',
     },
     /**
      * @summary Provides detailed information about the current session.
@@ -1247,18 +1279,22 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
           {
             uri: `session://info/${sessionId}`,
             mimeType: 'application/json',
-            text: JSON.stringify({
-              sessionId: sessionData.sessionId,
-              startTime: new Date(sessionData.startTime).toISOString(),
-              lastActivity: new Date(sessionData.lastActivity).toISOString(),
-              requestCount: sessionData.requestCount,
-              calculationCount: sessionData.calculations.length,
-              uptime: Date.now() - sessionData.startTime
-            }, null, 2)
-          }
-        ]
+            text: JSON.stringify(
+              {
+                sessionId: sessionData.sessionId,
+                startTime: new Date(sessionData.startTime).toISOString(),
+                lastActivity: new Date(sessionData.lastActivity).toISOString(),
+                requestCount: sessionData.requestCount,
+                calculationCount: sessionData.calculations.length,
+                uptime: Date.now() - sessionData.startTime,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
       };
-    }
+    },
   );
 
   // --- Resource: formulas-library ---
@@ -1269,7 +1305,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
     {
       title: 'Formula Library',
       description: 'Mathematical formulas',
-      mimeType: 'application/json'
+      mimeType: 'application/json',
     },
     /**
      * @summary Provides access to a library of mathematical formulas.
@@ -1283,30 +1319,34 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
           {
             uri: 'formulas://library',
             mimeType: 'application/json',
-            text: JSON.stringify({
-              quadratic: {
-                formula: 'ax² + bx + c = 0',
-                solution: 'x = (-b ± √(b²-4ac)) / 2a'
+            text: JSON.stringify(
+              {
+                quadratic: {
+                  formula: 'ax² + bx + c = 0',
+                  solution: 'x = (-b ± √(b²-4ac)) / 2a',
+                },
+                pythagorean: {
+                  formula: 'a² + b² = c²',
+                  description: 'For right triangles',
+                },
+                compound_interest: {
+                  formula: 'A = P(1 + r/n)^(nt)',
+                  variables: {
+                    A: 'Final amount',
+                    P: 'Principal',
+                    r: 'Annual interest rate',
+                    n: 'Compounding frequency',
+                    t: 'Time in years',
+                  },
+                },
               },
-              pythagorean: {
-                formula: 'a² + b² = c²',
-                description: 'For right triangles'
-              },
-              compound_interest: {
-                formula: 'A = P(1 + r/n)^(nt)',
-                variables: {
-                  A: 'Final amount',
-                  P: 'Principal',
-                  r: 'Annual interest rate',
-                  n: 'Compounding frequency',
-                  t: 'Time in years'
-                }
-              }
-            }, null, 2)
-          }
-        ]
+              null,
+              2,
+            ),
+          },
+        ],
       };
-    }
+    },
   );
 
   // ==========================================
@@ -1325,7 +1365,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
     {
       title: 'Explain Calculation',
       description: 'Explain how to perform a calculation step by step',
-      argsSchema: explainCalculationArgsSchema.shape
+      argsSchema: explainCalculationArgsSchema.shape,
     },
     /**
      * @summary Generates prompts for step-by-step calculation explanations.
@@ -1344,12 +1384,12 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
             role: 'user',
             content: {
               type: 'text',
-              text: `Please explain how to ${operation} step by step at a ${explanationLevel} level. Include examples and common mistakes to avoid.`
-            }
-          }
-        ]
+              text: `Please explain how to ${operation} step by step at a ${explanationLevel} level. Include examples and common mistakes to avoid.`,
+            },
+          },
+        ],
       };
-    }
+    },
   );
 
   // --- Prompt: generate-problems ---
@@ -1358,7 +1398,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
     {
       title: 'Generate Practice Problems',
       description: 'Generate math practice problems',
-      argsSchema: generateProblemsArgsSchema.shape
+      argsSchema: generateProblemsArgsSchema.shape,
     },
     /**
      * @summary Generates prompts for creating practice math problems.
@@ -1375,12 +1415,12 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
             role: 'user',
             content: {
               type: 'text',
-              text: `Generate ${count} ${difficulty}-level practice problems for ${topic}. Include solutions and explanations.`
-            }
-          }
-        ]
+              text: `Generate ${count} ${difficulty}-level practice problems for ${topic}. Include solutions and explanations.`,
+            },
+          },
+        ],
       };
-    }
+    },
   );
 
   // --- Prompt: solve_math_problem ---
@@ -1389,7 +1429,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
     {
       title: 'Solve Math Problem',
       description: 'Step-by-step problem solving',
-      argsSchema: solveMathProblemArgsSchema.shape
+      argsSchema: solveMathProblemArgsSchema.shape,
     },
     /**
      * @summary Generates prompts for step-by-step math problem solving.
@@ -1406,12 +1446,12 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
             role: 'user',
             content: {
               type: 'text',
-              text: `Solve this problem: ${problem}. ${showWork === 'true' ? 'Show all work and explain each step.' : 'Provide the solution.'}`
-            }
-          }
-        ]
+              text: `Solve this problem: ${problem}. ${showWork === 'true' ? 'Show all work and explain each step.' : 'Provide the solution.'}`,
+            },
+          },
+        ],
       };
-    }
+    },
   );
 
   // --- Prompt: explain_formula ---
@@ -1420,7 +1460,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
     {
       title: 'Explain Formula',
       description: 'Detailed formula explanation',
-      argsSchema: explainFormulaArgsSchema.shape
+      argsSchema: explainFormulaArgsSchema.shape,
     },
     /**
      * @summary Generates prompts for detailed mathematical formula explanations.
@@ -1437,12 +1477,12 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
             role: 'user',
             content: {
               type: 'text',
-              text: `Explain the formula "${formula}"${context ? ` in the context of ${context}` : ''}. Include what each variable represents and when to use this formula.`
-            }
-          }
-        ]
+              text: `Explain the formula "${formula}"${context ? ` in the context of ${context}` : ''}. Include what each variable represents and when to use this formula.`,
+            },
+          },
+        ],
       };
-    }
+    },
   );
 
   // --- Prompt: calculator_assistant ---
@@ -1451,7 +1491,7 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
     {
       title: 'Calculator Assistant',
       description: 'General calculation assistance',
-      argsSchema: calculatorAssistantArgsSchema.shape
+      argsSchema: calculatorAssistantArgsSchema.shape,
     },
     /**
      * @summary Generates prompts for general calculation assistance and guidance.
@@ -1468,12 +1508,12 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
             role: 'user',
             content: {
               type: 'text',
-              text: `I need help with this calculation: ${query}. Please provide step-by-step guidance.`
-            }
-          }
-        ]
+              text: `I need help with this calculation: ${query}. Please provide step-by-step guidance.`,
+            },
+          },
+        ],
       };
-    }
+    },
   );
 
   return server;
@@ -1519,13 +1559,15 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
    * WHY: MCP clients often run in browsers or different domains.
    * This configuration allows the necessary headers and methods.
    */
-  app.use(cors({
-    origin: config.corsOrigin,
-    credentials: true,
-    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'mcp-session-id', 'last-event-id'],
-    exposedHeaders: ['Mcp-Session-Id']
-  }));
+  app.use(
+    cors({
+      origin: config.corsOrigin,
+      credentials: true,
+      methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'mcp-session-id', 'last-event-id'],
+      exposedHeaders: ['Mcp-Session-Id'],
+    }),
+  );
 
   /**
    * Rate limiting to prevent abuse.
@@ -1542,11 +1584,11 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
         jsonrpc: '2.0',
         error: {
           code: -32000,
-          message: 'Too many requests, please retry later'
+          message: 'Too many requests, please retry later',
         },
-        id: null
+        id: null,
       });
-    }
+    },
   });
 
   // Apply rate limiting to all /mcp endpoints
@@ -1613,7 +1655,9 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
    * @returns The cached or newly created server and transport instances.
    * @throws {SessionNotFoundError} If the session does not exist in the persistent store.
    */
-  async function getOrCreateInstances(sessionId: string): Promise<{ transport: StreamableHTTPServerTransport; server: McpServer }> {
+  async function getOrCreateInstances(
+    sessionId: string,
+  ): Promise<{ transport: StreamableHTTPServerTransport; server: McpServer }> {
     // 1. Check the high-performance local cache first.
     let instances = sessionInstances.get(sessionId);
     if (instances) {
@@ -1633,15 +1677,9 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
       sessionIdGenerator: () => sessionId,
       eventStore,
       enableDnsRebindingProtection: true,
-      allowedHosts: [
-        'localhost:' + config.port,
-        '127.0.0.1:' + config.port
-      ],
+      allowedHosts: ['localhost:' + config.port, '127.0.0.1:' + config.port],
       ...(config.corsOrigin !== '*' && {
-        allowedOrigins: [
-          'http://localhost:' + config.port,
-          'http://127.0.0.1:' + config.port
-        ]
+        allowedOrigins: ['http://localhost:' + config.port, 'http://127.0.0.1:' + config.port],
       }),
       onsessioninitialized: async (sid) => {
         console.log(`Session re-initialized: ${sid}`);
@@ -1655,7 +1693,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
           activeSessionsGauge.dec();
           console.log(`Session closed: ${closedSessionId}`);
         }
-      }
+      },
     });
 
     // CRITICAL TYPE ASSERTION: We must manually assign the ID for reconstruction.
@@ -1695,11 +1733,11 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
 
     if (sessionId) {
       /**
-         * EXISTING SESSION FLOW
-         * 1. Update activity tracking
-         * 2. Get or reconstruct MCP instances using helper
-         * 3. Handle the request
-         */
+       * EXISTING SESSION FLOW
+       * 1. Update activity tracking
+       * 2. Get or reconstruct MCP instances using helper
+       * 3. Handle the request
+       */
 
       // Update activity tracking for session timeout management
       await sessionStore.updateActivity(sessionId);
@@ -1708,27 +1746,27 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
       transport = instances.transport;
     } else if (!sessionId && isInitializeRequest(req.body)) {
       /**
-         * NEW SESSION FLOW
-         * 1. Pre-generate session ID
-         * 2. Create transport with fixed ID
-         * 3. Store session data FIRST
-         * 4. Create MCP server AFTER storage
-         * 5. Connect and cache instances
-         */
+       * NEW SESSION FLOW
+       * 1. Pre-generate session ID
+       * 2. Create transport with fixed ID
+       * 3. Store session data FIRST
+       * 4. Create MCP server AFTER storage
+       * 5. Connect and cache instances
+       */
 
       /**
-         * --- PATTERN: Critical Initialization Order ---
-         * To prevent race conditions in a distributed system, we follow a strict order:
-         * 1. Generate the session ID client-side.
-         * 2. Create the transport configured with this ID.
-         * 3. PERSIST the initial session data to Redis/memory FIRST.
-         * 4. THEN create the McpServer instance which can now safely read that data.
-         * 5. Connect the two and cache them locally.
-         *
-         * WHY: If we create the MCP server before storing the session data,
-         * there's a race condition where the server might try to read session
-         * data that doesn't exist yet.
-         */
+       * --- PATTERN: Critical Initialization Order ---
+       * To prevent race conditions in a distributed system, we follow a strict order:
+       * 1. Generate the session ID client-side.
+       * 2. Create the transport configured with this ID.
+       * 3. PERSIST the initial session data to Redis/memory FIRST.
+       * 4. THEN create the McpServer instance which can now safely read that data.
+       * 5. Connect the two and cache them locally.
+       *
+       * WHY: If we create the MCP server before storing the session data,
+       * there's a race condition where the server might try to read session
+       * data that doesn't exist yet.
+       */
 
       // Pre-create the session ID that will be used
       const newSessionId = randomUUID();
@@ -1738,15 +1776,9 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
         sessionIdGenerator: () => newSessionId,
         eventStore,
         enableDnsRebindingProtection: true,
-        allowedHosts: [
-          'localhost:' + config.port,
-          '127.0.0.1:' + config.port
-        ],
+        allowedHosts: ['localhost:' + config.port, '127.0.0.1:' + config.port],
         ...(config.corsOrigin !== '*' && {
-          allowedOrigins: [
-            'http://localhost:' + config.port,
-            'http://127.0.0.1:' + config.port
-          ]
+          allowedOrigins: ['http://localhost:' + config.port, 'http://127.0.0.1:' + config.port],
         }),
         onsessioninitialized: async (sessionId) => {
           console.log(`Session initialized: ${sessionId}`);
@@ -1761,7 +1793,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
             activeSessionsGauge.dec();
             console.log(`Session closed: ${closedSessionId}`);
           }
-        }
+        },
       });
 
       // Create session data immediately
@@ -1772,7 +1804,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
         startTime: Date.now(),
         lastActivity: Date.now(),
         requestCount: 1,
-        calculations: []
+        calculations: [],
       };
 
       // Store session in persistent storage BEFORE creating server
@@ -1796,7 +1828,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
       // Invalid request - no session ID and not an initialization request
       throw new McpError(
         ErrorCode.InvalidRequest,
-        'Request must be an initialize request if no session ID is provided.'
+        'Request must be an initialize request if no session ID is provided.',
       );
     }
 
@@ -1861,7 +1893,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
           sessions: sessionInstances.size,
           uptime: process.uptime(),
           storageMode: 'redis',
-          redis: redisClient.status
+          redis: redisClient.status,
         });
       } catch {
         // If Redis is down, server is unhealthy
@@ -1872,7 +1904,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
           uptime: process.uptime(),
           storageMode: 'redis',
           redis: 'disconnected',
-          error: 'Redis connection failed'
+          error: 'Redis connection failed',
         });
       }
     } else {
@@ -1882,7 +1914,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
         timestamp: new Date().toISOString(),
         sessions: sessionInstances.size,
         uptime: process.uptime(),
-        storageMode: 'in-memory'
+        storageMode: 'in-memory',
       });
     }
   });
@@ -1935,7 +1967,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
     res.status(500).json({
       jsonrpc: '2.0',
       id: rpcId,
-      error: { code, message, data }
+      error: { code, message, data },
     });
   });
 
@@ -1959,7 +1991,9 @@ async function startServer(): Promise<void> {
     const server: Server = createServer(app);
 
     server.listen(config.port, () => {
-      console.log(`Calculator Learning Demo - Streamable HTTP (Stateful) running on port ${config.port}`);
+      console.log(
+        `Calculator Learning Demo - Streamable HTTP (Stateful) running on port ${config.port}`,
+      );
       console.log(`POST http://localhost:${config.port}/mcp - Command channel`);
       console.log(`GET  http://localhost:${config.port}/mcp - Announcement channel`);
     });
@@ -1988,7 +2022,6 @@ async function startServer(): Promise<void> {
         process.exit(0);
       });
     });
-
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

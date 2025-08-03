@@ -5,22 +5,15 @@
       "type": "node",
       "request": "launch",
       "name": "Debug Server (Development)",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}/src/server.ts",
-      "outFiles": [
-        "${workspaceFolder}/dist/**/*.js"
-      ],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
       "env": {
         "NODE_ENV": "development",
         "PORT": "1453",
         "USE_REDIS": "false"
       },
-      "runtimeArgs": [
-        "--loader",
-        "tsx"
-      ],
+      "runtimeArgs": ["--loader", "tsx"],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
     },
@@ -28,14 +21,10 @@
       "type": "node",
       "request": "launch",
       "name": "Debug Server (Production Mode)",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "program": "${workspaceFolder}/dist/server.js",
       "preLaunchTask": "npm: build",
-      "outFiles": [
-        "${workspaceFolder}/dist/**/*.js"
-      ],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
       "env": {
         "NODE_ENV": "production",
         "PORT": "1453",
@@ -51,9 +40,7 @@
       "name": "Attach to Process",
       "port": 9229,
       "restart": true,
-      "skipFiles": [
-        "<node_internals>/**"
-      ]
+      "skipFiles": ["<node_internals>/**"]
     }
   ]
 }

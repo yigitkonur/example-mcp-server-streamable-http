@@ -1,52 +1,65 @@
-name: calculator-learning-demo-streamable-http
-description: |
-  Streamable HTTP (stateful) reference implementation for MCP learning edition.
-  A comprehensive calculator server with session management, event sourcing, and resumability.
-  Features 7 tools, 5 resources, and 5 prompts for mathematical calculations and learning.
+# smithery.yaml
+id: calculator-learning-demo-streamable-http
+name: Calculator Learning Demo (Streamable HTTP)
+description: Comprehensive MCP server demonstrating stateful calculator tools with hybrid Redis/in-memory storage over Streamable HTTP.
+repository: https://github.com/modelcontextprotocol/servers/tree/main/src/streamable-http
+license: MIT
 
+startCommand:
+  type: streamable_http
+  command: node
+  args: ['dist/server.js']
+  cwd: ./
+  port: 1453
+
+# Per-session configuration schema - Smithery will prompt users for these values
 configSchema:
   type: object
   properties:
+    PORT:
+      type: string
+      title: Server Port
+      description: Port for the HTTP server (default 1453)
+      default: '1453'
     SESSION_TIMEOUT:
       type: string
       title: Session Timeout
-      description: Session timeout in minutes (default: 30)
-      default: "30"
+      description: Session timeout in minutes (default 30)
+      default: '30'
     RATE_LIMIT_MAX:
       type: string
       title: Rate Limit Max
-      description: Maximum requests per window (default: 1000)
-      default: "1000"
+      description: Maximum requests per window (default 1000)
+      default: '1000'
     RATE_LIMIT_WINDOW:
       type: string
       title: Rate Limit Window
-      description: Rate limit window in minutes (default: 15)
-      default: "15"
+      description: Rate limit window in minutes (default 15)
+      default: '15'
+    LOG_LEVEL:
+      type: string
+      title: Log Level
+      enum: ['debug', 'info', 'warn', 'error']
+      default: 'info'
+      description: Logging verbosity level
+    USE_REDIS:
+      type: string
+      title: Use Redis
+      enum: ['true', 'false']
+      default: 'false'
+      description: Enable Redis for distributed storage (requires Redis instance)
+    REDIS_URL:
+      type: string
+      title: Redis URL
+      description: Redis connection URL (only used if USE_REDIS=true)
+      default: 'redis://localhost:6379'
     CORS_ORIGIN:
       type: string
       title: CORS Origin
-      description: CORS allowed origin (default: *)
-      default: "*"
+      description: Allowed CORS origin (default allows all)
+      default: '*'
     SAMPLE_TOOL_NAME:
       type: string
       title: Sample Tool Name
-      description: Optional sample tool name for educational purposes (leave empty to disable)
-      default: ""
-
-startCommand:
-  type: http
-  healthPath: /health
-  commandFunction: |
-    (cfg) => ({
-      command: 'node',
-      args: ['dist/production-server.js'],
-      env: {
-        PORT: 8080,
-        SESSION_TIMEOUT: cfg.SESSION_TIMEOUT || '30',
-        RATE_LIMIT_MAX: cfg.RATE_LIMIT_MAX || '1000',
-        RATE_LIMIT_WINDOW: cfg.RATE_LIMIT_WINDOW || '15',
-        CORS_ORIGIN: cfg.CORS_ORIGIN || '*',
-        SAMPLE_TOOL_NAME: cfg.SAMPLE_TOOL_NAME || '',
-        NODE_ENV: 'production'
-      }
-    })
+      description: Optional educational tool name for learning purposes
+  required: []

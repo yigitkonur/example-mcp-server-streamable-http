@@ -1,69 +1,62 @@
-# =========================================================================
-# Stage 1: The "Builder" Stage
-#
-# This stage installs all dependencies (including devDependencies),
-# compiles the TypeScript to JavaScript, and prepares the production assets.
-# =========================================================================
-FROM node:20-alpine AS builder
+# Multi-stage build for optimal production image
+FROM node:22-alpine AS builder
 
-# Set the working directory inside the container
-WORKDIR /usr/src/app
+# Set working directory
+WORKDIR /app
 
-# Copy package.json and package-lock.json first to leverage Docker's layer caching.
-# This step only re-runs if these files change.
+# Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install all dependencies, including devDependencies needed for building
+# Install dependencies (including dev deps for build)
 RUN npm ci
 
-# Copy the rest of the application source code
-COPY ./src ./src
+# Copy source code
+COPY . .
 
-# Run the build script defined in package.json to compile TypeScript to JavaScript
-# This will create a `dist` folder.
+# Build the application
 RUN npm run build
 
-# =========================================================================
-# Stage 2: The "Production" Stage
-#
-# This stage starts from a fresh Node.js base image and copies only
-# the compiled code and production dependencies. This creates a small
-# and secure final image.
-# =========================================================================
-FROM node:20-alpine
+# Production stage
+FROM node:22-alpine AS production
 
-WORKDIR /usr/src/app
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
 
-# Create a non-root user and group for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Set working directory
+WORKDIR /app
 
-# Copy package files again
+# Copy package files
 COPY package*.json ./
 
-# Install *only* production dependencies.
-# The --omit=dev flag is critical for a lean production image.
-RUN npm ci --omit=dev
+# Install only production dependencies
+RUN npm ci --only=production && npm cache clean --force
 
-# Copy the compiled JavaScript code from the 'builder' stage
-COPY --from=builder /usr/src/app/dist ./dist
+# Copy built application from builder stage
+COPY --from=builder /app/dist ./dist
 
-# Change ownership of all files to the non-root user
-RUN chown -R appuser:appgroup /usr/src/app
+# Copy any static assets if needed
+COPY --from=builder /app/*.md ./
+COPY --from=builder /app/*.json ./
+COPY --from=builder /app/*.yaml ./
 
-# Switch to the non-root user
-USER appuser
+# Change ownership to nodejs user
+RUN chown -R nodejs:nodejs /app
+USER nodejs
 
-# The PORT environment variable is used by your production-server.ts
-# Set a default value here. It can be overridden at runtime.
-ENV PORT=1453
+# Expose the default port
+EXPOSE 1453
 
-# Expose the port that the application will listen on.
-# This is documentation for the user and for Docker networking.
-EXPOSE ${PORT}
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:${PORT:-1453}/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
-# Define the command to run the application
-CMD [ "npm", "start" ]
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the server
+CMD ["node", "dist/server.js"]
