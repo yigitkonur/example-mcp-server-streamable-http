@@ -3,7 +3,6 @@ node_modules/
 
 # Build output
 dist/
-build/
 
 # Environment variables
 .env
@@ -14,47 +13,23 @@ build/
 
 # Logs
 *.log
-logs/
 
-# TypeScript
+# TypeScript build cache
 *.tsbuildinfo
 
-# Cache directories
+# Tool caches
 .npm
 .eslintcache
 .prettiercache
 
-# Runtime data
-*.pid
-*.pid.lock
-
-# Coverage reports
-coverage/
-.nyc_output
-
-# Test outputs
-test-results/
-test-output/
-
-# Temporary files
-tmp/
-temp/
-
 # OS files
 .DS_Store
-.DS_Store?
 ._*
 Thumbs.db
 
-# IDE files (optional - some teams commit these)
-.vscode/settings.json
+# IDE files
+.vscode/
 .idea/
-*.swp
-*.swo
 
 # Docker secrets
 *.secret
-
-# Backup files
-*.bak
-*.backup
