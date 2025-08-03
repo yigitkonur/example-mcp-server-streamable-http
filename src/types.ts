@@ -207,7 +207,7 @@ export const demoProgressArgsSchema = z.object({
  * This is used when SAMPLE_TOOL_NAME environment variable is set.
  */
 export const sampleToolArgsSchema = z.object({
-  message: z.string().describe('Message to echo back'),
+  value: z.string().describe('String value to process'),
 });
 
 // =================================================================

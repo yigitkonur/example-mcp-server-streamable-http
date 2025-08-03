@@ -346,13 +346,14 @@ npx @modelcontextprotocol/inspector --cli http://localhost:1453/mcp
 
 The server is configured using environment variables.
 
-| Variable      | Description                                                   | Default                  |
-| :------------ | :------------------------------------------------------------ | :----------------------- |
-| `PORT`        | The port for the HTTP server to listen on.                    | `1453`                   |
-| `USE_REDIS`   | **Set to `true` to enable Redis for distributed state.**      | `false`                  |
-| `REDIS_URL`   | The connection string for the Redis instance.                 | `redis://localhost:6379` |
-| `LOG_LEVEL`   | Logging verbosity (`debug`, `info`, `warn`, `error`).         | `info`                   |
-| `CORS_ORIGIN` | Allowed origin for CORS. Use a specific domain in production. | `*`                      |
+| Variable           | Description                                                                                                                                                                                                                                                                             | Default                  |
+| :----------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------- |
+| `PORT`             | The port for the HTTP server to listen on.                                                                                                                                                                                                                                              | `1453`                   |
+| `USE_REDIS`        | **Set to `true` to enable Redis for distributed state.**                                                                                                                                                                                                                                | `false`                  |
+| `REDIS_URL`        | The connection string for the Redis instance.                                                                                                                                                                                                                                           | `redis://localhost:6379` |
+| `LOG_LEVEL`        | Logging verbosity (`debug`, `info`, `warn`, `error`).                                                                                                                                                                                                                                   | `info`                   |
+| `CORS_ORIGIN`      | Allowed origin for CORS. Use a specific domain in production.                                                                                                                                                                                                                           | `*`                      |
+| `SAMPLE_TOOL_NAME` | **(Educational)** Demonstrates dynamic tool registration via environment variables. When set, adds a simple echo tool with the specified name that takes a `value` parameter and returns `test string print: {value}`. This pattern shows how MCP servers can be configured at runtime. | None                     |
 
 ### Production Deployment
 

@@ -735,12 +735,12 @@ async function createMCPServer(sessionId: string): Promise<McpServer> {
        * @param args The validated tool arguments, matching `SampleToolArgs`.
        * @throws {SessionNotFoundError} If the session ID associated with the request is invalid.
        */
-      async ({ message }: SampleToolArgs): Promise<CallToolResult> => {
+      async ({ value }: SampleToolArgs): Promise<CallToolResult> => {
         return {
           content: [
             {
               type: 'text',
-              text: `Sample tool "${sampleToolName}" received: ${message}`,
+              text: `test string print: ${value}`,
             },
           ],
         };
