@@ -598,7 +598,7 @@ async function initializeStores(): Promise<{
   eventStore: EventStore;
 }> {
   if (config.useRedis) {
-    console.log('✅ Using Redis for distributed state management.');
+    console.warn('✅ Using Redis for distributed state management.');
 
     /**
      * Redis configuration with production-ready settings.
@@ -641,15 +641,15 @@ async function initializeStores(): Promise<{
     });
 
     redisClient.on('connect', () => {
-      console.log('Redis Client Connected');
+      console.warn('Redis Client Connected');
     });
 
     redisClient.on('reconnecting', () => {
-      console.log('Redis Client Reconnecting...');
+      console.warn('Redis Client Reconnecting...');
     });
 
     redisClient.on('close', () => {
-      console.log('Redis Client Connection Closed');
+      console.warn('Redis Client Connection Closed');
     });
 
     return {
@@ -657,7 +657,7 @@ async function initializeStores(): Promise<{
       eventStore: new RedisEventStore(redisClient),
     };
   } else {
-    console.log('✅ Using In-Memory for single-node state management.');
+    console.warn('✅ Using In-Memory for single-node state management.');
     return {
       sessionStore: new InMemorySessionStore(config.sessionTimeout),
       eventStore: new InMemoryEventStore(),
@@ -1603,46 +1603,48 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
    * The logic differs between Redis (which handles expiration automatically)
    * and in-memory storage (which requires manual cleanup).
    */
-  setInterval(async () => {
-    if (config.useRedis) {
-      /**
-       * Redis cleanup: Remove orphaned transport/server instances.
-       * WHY: Redis handles session expiration via TTL, but we need to clean up
-       * local instances when sessions expire.
-       */
-      for (const [sessionId, instances] of sessionInstances) {
-        const session = await sessionStore.get(sessionId);
-        if (!session) {
-          instances.transport.close();
-          instances.server.close();
-          sessionInstances.delete(sessionId);
+  setInterval(() => {
+    void (async () => {
+      if (config.useRedis) {
+        /**
+         * Redis cleanup: Remove orphaned transport/server instances.
+         * WHY: Redis handles session expiration via TTL, but we need to clean up
+         * local instances when sessions expire.
+         */
+        for (const [sessionId, instances] of sessionInstances) {
+          const session = await sessionStore.get(sessionId);
+          if (!session) {
+            void instances.transport.close();
+            void instances.server.close();
+            sessionInstances.delete(sessionId);
+          }
+        }
+      } else {
+        /**
+         * In-memory cleanup: Both session data and local instances.
+         * WHY: In-memory storage doesn't have automatic expiration.
+         */
+        const inMemoryStore = sessionStore as InMemorySessionStore;
+        inMemoryStore.cleanup();
+
+        for (const [sessionId, instances] of sessionInstances) {
+          const session = await sessionStore.get(sessionId);
+          if (!session) {
+            void instances.transport.close();
+            void instances.server.close();
+            sessionInstances.delete(sessionId);
+          }
         }
       }
-    } else {
-      /**
-       * In-memory cleanup: Both session data and local instances.
-       * WHY: In-memory storage doesn't have automatic expiration.
-       */
-      const inMemoryStore = sessionStore as InMemorySessionStore;
-      inMemoryStore.cleanup();
 
-      for (const [sessionId, instances] of sessionInstances) {
-        const session = await sessionStore.get(sessionId);
-        if (!session) {
-          instances.transport.close();
-          instances.server.close();
-          sessionInstances.delete(sessionId);
-        }
+      // Update Prometheus metrics for observability
+      activeSessionsGauge.set(sessionInstances.size);
+
+      // Cleanup event store if it has a cleanup method
+      if ('cleanup' in eventStore && typeof eventStore.cleanup === 'function') {
+        await eventStore.cleanup();
       }
-    }
-
-    // Update Prometheus metrics for observability
-    activeSessionsGauge.set(sessionInstances.size);
-
-    // Cleanup event store if it has a cleanup method
-    if ('cleanup' in eventStore && typeof eventStore.cleanup === 'function') {
-      await eventStore.cleanup();
-    }
+    })();
   }, 60000); // Every minute
 
   /**
@@ -1672,7 +1674,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
     }
 
     // 3. Reconstruct the instances, as the session is valid but not cached on this node.
-    console.log(`Reconstructing instances for session ${sessionId} on this node`);
+    console.warn(`Reconstructing instances for session ${sessionId} on this node`);
     const reconstructedTransport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => sessionId,
       eventStore,
@@ -1682,7 +1684,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
         allowedOrigins: ['http://localhost:' + config.port, 'http://127.0.0.1:' + config.port],
       }),
       onsessioninitialized: async (sid) => {
-        console.log(`Session re-initialized: ${sid}`);
+        console.warn(`Session re-initialized: ${sid}`);
       },
       onsessionclosed: async (closedSessionId) => {
         const instances = sessionInstances.get(closedSessionId);
@@ -1691,7 +1693,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
           sessionInstances.delete(closedSessionId);
           await sessionStore.delete(closedSessionId);
           activeSessionsGauge.dec();
-          console.log(`Session closed: ${closedSessionId}`);
+          console.warn(`Session closed: ${closedSessionId}`);
         }
       },
     });
@@ -1710,7 +1712,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
     reconstructedTransport.onclose = () => {
       const sid = (reconstructedTransport as TransportWithSessionId).sessionId;
       if (sid && sessionInstances.has(sid)) {
-        console.log(`Transport closed for session ${sid}`);
+        console.warn(`Transport closed for session ${sid}`);
       }
     };
 
@@ -1781,7 +1783,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
           allowedOrigins: ['http://localhost:' + config.port, 'http://127.0.0.1:' + config.port],
         }),
         onsessioninitialized: async (sessionId) => {
-          console.log(`Session initialized: ${sessionId}`);
+          console.warn(`Session initialized: ${sessionId}`);
           activeSessionsGauge.inc();
         },
         onsessionclosed: async (closedSessionId) => {
@@ -1791,7 +1793,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
             sessionInstances.delete(closedSessionId);
             await sessionStore.delete(closedSessionId);
             activeSessionsGauge.dec();
-            console.log(`Session closed: ${closedSessionId}`);
+            console.warn(`Session closed: ${closedSessionId}`);
           }
         },
       });
@@ -1821,7 +1823,7 @@ async function createApp(): Promise<{ app: express.Application; eventStore: Even
       transport.onclose = () => {
         const sid = transport.sessionId;
         if (sid && sessionInstances.has(sid)) {
-          console.log(`Transport closed for session ${sid}`);
+          console.warn(`Transport closed for session ${sid}`);
         }
       };
     } else {
@@ -1991,11 +1993,11 @@ async function startServer(): Promise<void> {
     const server: Server = createServer(app);
 
     server.listen(config.port, () => {
-      console.log(
+      console.warn(
         `Calculator Learning Demo - Streamable HTTP (Stateful) running on port ${config.port}`,
       );
-      console.log(`POST http://localhost:${config.port}/mcp - Command channel`);
-      console.log(`GET  http://localhost:${config.port}/mcp - Announcement channel`);
+      console.warn(`POST http://localhost:${config.port}/mcp - Command channel`);
+      console.warn(`GET  http://localhost:${config.port}/mcp - Announcement channel`);
     });
 
     /**
@@ -2005,21 +2007,23 @@ async function startServer(): Promise<void> {
      * Zero-downtime deployments depend on this working correctly.
      */
     process.on('SIGTERM', () => {
-      console.log('Shutting down gracefully...');
-      server.close(async () => {
-        // Close all active sessions
-        for (const [sessionId, instances] of sessionInstances) {
-          instances.transport.close();
-          instances.server.close();
-          await sessionStore.delete(sessionId);
-        }
+      console.warn('Shutting down gracefully...');
+      server.close(() => {
+        void (async () => {
+          // Close all active sessions
+          for (const [sessionId, instances] of sessionInstances) {
+            void instances.transport.close();
+            void instances.server.close();
+            await sessionStore.delete(sessionId);
+          }
 
-        // Close Redis connection if using Redis
-        if (redisClient) {
-          await redisClient.quit();
-        }
+          // Close Redis connection if using Redis
+          if (redisClient) {
+            await redisClient.quit();
+          }
 
-        process.exit(0);
+          process.exit(0);
+        })();
       });
     });
   } catch (error) {
@@ -2034,7 +2038,7 @@ async function startServer(): Promise<void> {
  * automatically starting the server.
  */
 if (process.env['NODE_ENV'] !== 'test') {
-  startServer();
+  void startServer();
 }
 
 // Export key functions for testing and external use
